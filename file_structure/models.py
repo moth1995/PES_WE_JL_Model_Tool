@@ -1,6 +1,5 @@
-import struct
 from .object_3d import PolygonalFace, Vertex, VertexNormal, VertexTexture
-from .utils.common_functions import to_decimal, to_float, to_int
+from .utils.common_functions import to_float, to_int
 
 class FacePCModel:
     magic_number = bytearray([0x20,0x05,0x04,0x20])
@@ -9,6 +8,7 @@ class FacePCModel:
     def __init__(self,model_bytes):
         self.model_bytes = model_bytes
         self.validate()
+        self.parts_counter_address = to_int(self.model_bytes[16:20])
         self.vertex_count_address = to_int(self.model_bytes[16:20]) + 8
         self.vertex_count = to_int(self.model_bytes[self.vertex_count_address : self.vertex_count_address + 2])
         self.vertex_start_address = self.vertex_count_address + 8
@@ -21,6 +21,10 @@ class FacePCModel:
         self.poly_faces_count = to_int(self.model_bytes[self.poly_faces_address : self.poly_faces_address + 2])
         self.poly_faces_start_address = self.poly_faces_address + 2
         self.load_polygonal_faces()
+
+    @property
+    def parts_offset_table_address(self):
+        return self.parts_counter_address + 4
 
     def validate(self):
         """
@@ -42,7 +46,6 @@ class FacePCModel:
             to_float(self.model_bytes[pos + 4 : pos + 8]) * -0.025,
             to_float(self.model_bytes[pos : pos + 4]) * 0.025,
             )
-            #print (vertex.x)
             self.vertex_list.append(vertex)
 
     def load_vertex_normal(self):
@@ -85,41 +88,23 @@ class FacePCModel:
             tstrip_index_list.append(idx)
 
         for i in range(0, self.poly_faces_count - 2, 1):
-            if i % 2 != 0:
-                self.polygonal_faces_list.append(
-                    PolygonalFace(
-                        tstrip_index_list[i + 1],
-                        tstrip_index_list[i],
-                        tstrip_index_list[i + 2]
+            if (tstrip_index_list[i] != tstrip_index_list[i + 1]) and (tstrip_index_list[i + 1] != tstrip_index_list[i + 2]) and (tstrip_index_list[i + 2] != tstrip_index_list[i]):
+                if i & 1:
+                    self.polygonal_faces_list.append(
+                        PolygonalFace(
+                            tstrip_index_list[i + 1],
+                            tstrip_index_list[i],
+                            tstrip_index_list[i + 2]
+                        )
                     )
-                )
-            else:
-                self.polygonal_faces_list.append(
-                    PolygonalFace(
-                        tstrip_index_list[i],
-                        tstrip_index_list[i + 1],
-                        tstrip_index_list[i + 2]
-                    )
-                )
-        """
-        self.polygonal_faces_list = []
-        for x in range(0, self.poly_faces_count - 2, 1):
-            i1, i2, i3=struct.unpack(
-                '3H', self.model_bytes[
-                    self.poly_faces_start_address + x * 2 : self.poly_faces_start_address + x * 2 + 6
-                    ]
-                )
-            i1 +=1
-            i2 +=1
-            i3 +=1
-            if (i1 != i2) and (i2 != i3) and (i3 != i1):
-                if x % 2 != 0:
-                    triangle = PolygonalFace(i2, i1, i3)
-                    self.polygonal_faces_list.append(triangle)
                 else:
-                    triangle = PolygonalFace(i2, i1, i3)
-                    self.polygonal_faces_list.append(triangle)
-        """
+                    self.polygonal_faces_list.append(
+                        PolygonalFace(
+                            tstrip_index_list[i],
+                            tstrip_index_list[i + 1],
+                            tstrip_index_list[i + 2]
+                        )
+                    )
 
 class FacePS2Model:
     magic_number = bytearray([0x03,0x00,0xFF,0xFF])
@@ -181,7 +166,6 @@ class FacePS2Model:
             to_float(self.model_bytes[pos + 4 : pos + 8]) * -0.025,
             to_float(self.model_bytes[pos : pos + 4]) * 0.025,
             )
-            #print (vertex.x)
             self.vertex_list.append(vertex)
 
     def load_vertex_normal(self):
