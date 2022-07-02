@@ -1,5 +1,7 @@
-from file_structure import FacePCModel, Container, unzlib_it, file_read
+from file_structure import FacePCModel, FacePS2Model, Container, unzlib_it, file_read
 from pathlib import Path
+
+from file_structure.image import PESImage, PNGImage
 
 def create_obj(pes_model:FacePCModel, folder:str, filename:str):
     with open (f"{folder}/{filename}.obj","w") as obj_file:
@@ -49,17 +51,41 @@ def get_face_hair_model(file_location:str):
     file_ctn = get_container(decompress_bin_file)
     return FacePCModel(file_ctn.files[0])
 
-def main():
-    # from a string we get a Path object and from that we get the values that we need
-    bin_location = Path("./Beckham-models/pc/face-unnamed_2009.bin")
+def is_hair(list_of_files:list):
+    if len(list_of_files) == 3:
+        return PESImage.PES_IMAGE_SIGNATURE == list_of_files[1][:4]
+    else:
+        return False
+
+def get_pes_texture(file_location:str):
+    bin_file = file_read(file_location)
+    decompress_bin_file = unzlib_it(bin_file[32:])
+    return get_container(decompress_bin_file).files[1] if is_hair(get_container(decompress_bin_file).files) else get_container(decompress_bin_file).files[-1]
+
+def bin_to_obj(file:str):
+    # from a string we get a Path object and then we get the values that we need
+    bin_location = Path(file)
     bin_full_path = str(bin_location.resolve())
     bin_filename = bin_location.stem
     bin_folder_location = str(bin_location.parent)
     
+    if not Path(f"{bin_folder_location}/{bin_filename}.png").is_file():
+        pes_image = PESImage()
+        pes_image.from_bytes(get_pes_texture(bin_full_path))
+        png_image = PNGImage()
+        png_image.pes_img = pes_image
+        png_image.png_from_pes_img16()
+        with open(f"{bin_folder_location}/{bin_filename}.png", "wb") as png_file:
+            png_file.write(png_image.png)
+    
     model = get_face_hair_model(bin_full_path)
     
+    # actions to create a obj and mtl file
     create_obj(model, bin_folder_location, bin_filename)
     create_mtl(bin_folder_location, bin_filename)
 
 if __name__ == "__main__":
-	main()
+    #bin_to_obj("./test/Beckham-models/pc/face-unnamed_2009.bin")
+    #bin_to_obj("./test/Beckham-models/pc/hair-unnamed_5041.bin")
+    ps2_part0_bytes = file_read("./test/Beckham-models/ps2/face_model_high.bin")
+    FacePS2Model(ps2_part0_bytes)

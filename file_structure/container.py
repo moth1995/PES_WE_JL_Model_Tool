@@ -3,7 +3,7 @@ from .utils.common_functions import to_int
 
 class Container:
 
-    def __init__(self,container_bytes):
+    def __init__(self,container_bytes: bytearray):
         self.container_bytes = container_bytes
         self.total_files = to_int(container_bytes[:4])
         self.idx_tbl_offset = to_int(container_bytes[4:8])
