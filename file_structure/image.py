@@ -13,7 +13,7 @@ class PESImage() :
 
     def from_bytes(self, pes_image_bytes:bytearray):
         magic_number = pes_image_bytes[:4]
-        if not self.valid_PESImage(magic_number): 
+        if not self.__valid_PESImage(magic_number): 
             raise Exception("not valid PES IMAGE")
         size = to_int(pes_image_bytes[8:12])
         pes_image_bytes = pes_image_bytes[:size]
@@ -24,9 +24,12 @@ class PESImage() :
         self.pes_palette = pes_image_bytes[pes_palette_start:pes_idat_start]
         self.pes_idat = pes_image_bytes[pes_idat_start:size]
 
-    def valid_PESImage(self,magic_number : bytearray):
+    def __valid_PESImage(self,magic_number : bytearray):
         return magic_number == self.PES_IMAGE_SIGNATURE
-        
+
+    def bgr_to_bgri(self):
+        for i in range(32,len(self.pes_palette),128):
+            self.pes_palette[i:i+32], self.pes_palette[i+32:i+72] = self.pes_palette[i+32:i+72], self.pes_palette[i:i+32]
 
 class PNGImage:
     PNG_SIGNATURE = bytearray([137, 80, 78, 71, 13, 10, 26, 10])
@@ -45,29 +48,26 @@ class PNGImage:
     keyword_software = 'Software'.encode('iso-8859-1')
     text_software = 'OF Team Editor'.encode('iso-8859-1')
     separator = bytearray(1)
-    pes_img = PESImage()
-    #def __init__(self, pes_img:PESImage):
-        #self.pes_img = pes_img
-        #self.png_from_pes_img16()
-
-    def png_from_pes_img16(self):
+    
+    def png_from_pes_img(self, pes_img: PESImage):
         """
         Returns a PNG image from a pes image
         """
+        self.pes_img = pes_img
         IHDR_DATA = (bytearray(self.pes_img.width.to_bytes(4, byteorder='big', signed=False)) 
         +  bytearray(self.pes_img.height.to_bytes(4, byteorder='big', signed=False)) 
         + bytearray([self.pes_img.bpp, 3, 0, 0, 0]))
         ihdr_crc32 = bytearray(zlib.crc32(self.IHDR + IHDR_DATA).to_bytes(4, byteorder='big', signed=False))
         ihdr_chunk = self.IHDR_LENGTH + self.IHDR + IHDR_DATA + ihdr_crc32
-        palette_data = self.pes_palette_to_RGB()
+        palette_data = self.__pes_palette_to_RGB()
         plte_lenght = bytearray(len(palette_data).to_bytes(4, byteorder='big', signed=False))
         plte_crc32 = bytearray(zlib.crc32(self.PLTE + palette_data).to_bytes(4, byteorder='big', signed=False))
         plt_chunk = plte_lenght + self.PLTE + palette_data + plte_crc32
-        trns_data = self.pes_trns_to_alpha()
+        trns_data = self.__pes_trns_to_alpha()
         trns_lenght = bytearray(len(trns_data).to_bytes(4, byteorder='big', signed=False))
         trns_crc32 = bytearray(zlib.crc32(self.TRNS+trns_data).to_bytes(4, byteorder='big', signed=False))
         trns_chunk = trns_lenght + self.TRNS + trns_data + trns_crc32
-        idat_data = self.pes_px_to_idat()
+        idat_data = self.__pes_px_to_idat()
         idat_lenght = bytearray(len(idat_data).to_bytes(4, byteorder='big', signed=False))
         idat_crc32 = bytearray(zlib.crc32(self.IDAT + idat_data).to_bytes(4, byteorder='big', signed=False))
         idat_chunk = bytearray(idat_lenght + self.IDAT + idat_data + idat_crc32)
@@ -83,22 +83,25 @@ class PNGImage:
 
         self.png = self.PNG_SIGNATURE + ihdr_chunk + plt_chunk + trns_chunk + author_chunk + software_chunk + idat_chunk + self.iend_chunk
 
-    def png_bytes_to_tk_img(self):
+    def __png_bytes_to_tk_img(self):
         return ImageTk.PhotoImage(Image.open(io.BytesIO(self.png)).convert("RGBA"))
 
-    def pes_palette_to_RGB(self):
+    def __pes_palette_to_RGB(self):
         palette_data = bytearray()
         for j in range(0, len(self.pes_img.pes_palette), 4):
             palette_data += self.pes_img.pes_palette[j : j + 3]
         return palette_data
 
-    def pes_trns_to_alpha(self):
+    def __pes_trns_to_alpha(self):
         trns_data = bytearray()
         for j in range(3, len(self.pes_img.pes_palette), 4):
             trns_data += self.pes_img.pes_palette[j : j + 1]
+        print(trns_data)
+        trns_data = self.__disable_alpha(trns_data)
+        print(trns_data)
         return trns_data
 
-    def pes_px_to_idat(self):
+    def __pes_px_to_idat(self):
         step = self.pes_img.width
         if step == 32:
             step = int(step / 2)
@@ -106,3 +109,13 @@ class PNGImage:
         for j in range(0, len(self.pes_img.pes_idat), step):
             idat_uncompress += self.separator + self.pes_img.pes_idat[j : j + step]
         return bytearray(zlib.compress(idat_uncompress))
+
+    def __disable_alpha(self,trns_data):
+        for i in range(0,len(trns_data),1): #Solo toma los bytes de transparencia
+            value = trns_data[i]*2
+            if value >= 256: #Si el valor es (mayor o igual a 256) se resta 1 al valor
+                value = value-1
+            elif value <= 0: #Si no el valor es (menor o igual al 0) se queda en 0
+                value = 0
+            trns_data[i] = value
+        return trns_data
