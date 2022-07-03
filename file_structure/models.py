@@ -257,5 +257,127 @@ class FacePS2Model:
                         )
                     )
 
+class FacePSPModel:
+    magic_number = bytearray([0x03,0x00,0xFF,0xFF])
+    data_size = 14 # 3 int16
+
+    def __init__(self,model_bytes:bytes):
+        self.model_bytes = model_bytes
+        self.validate()
+        self.pieces_total = to_int(self.model_bytes[32 : 36])
+        self.pieces_start_address = to_int(self.model_bytes[36 : 40])
+        self.pieces_end_address =  to_int(self.model_bytes[44 : 48])
+        self.vertex_list = []
+        self.vertex_normal_list = []
+        self.vertex_texture_list = []
+        self.polygonal_faces_list = []
+        self.set_pieces()
+        self.read_pieces()
+
+    def validate(self):
+        """
+        Function to check if we have a proper PES PS2 Model
+        """
+        if self.magic_number != self.model_bytes[:4]:
+            raise ValueError("Not a PS2 face model!")
+        return True
+
+    def set_pieces(self):
+        """
+        A PS2 Model is divided by pieces or parts, called it as you want
+        here we get all the pieces bytes into a list from the whole model bytes
+        """
+        pieces_bytes = self.model_bytes[self.pieces_start_address : self.pieces_end_address]
+        sum_address = 0
+        self.pieces = []
+        i = 0
+        while i < self.pieces_total:
+            piece_size = to_int(pieces_bytes[sum_address : sum_address + 4])
+            self.pieces.append(pieces_bytes[sum_address : sum_address + piece_size])
+            sum_address += piece_size
+            i +=1
+
+    def read_pieces(self):
+        tri_counter = 1
+        for piece in self.pieces:
+            #print("part #", i)
+            vertex_in_piece = to_int(piece[92:94])
+            #print("vertex ",vertex_in_piece)
+            vertex_start_address = to_int(piece[8:12])
+            normals_start_address = vertex_start_address + 6
+            uv_start_address = normals_start_address + 4
+            tri_start_address = to_int(piece[12:16])
+            tri_list_size = to_int(piece[16:20])
+            self.load_vertex(piece, vertex_in_piece, vertex_start_address)
+            # Load Normals !!!! NOT IMPLEMENTED YET NORMALS MUST BE X Y Z BUT IN PSP ARE JUST TWO INT16 VALUES
+            #self.load_vertex_normal(piece, vertex_in_piece, normals_start_address)
+            # Load UV
+            self.load_vextex_texture(piece, vertex_in_piece, uv_start_address)
+            # Load triangles in psp there are some parts that dont have triangles, we need to figure it out what to do with it
+            if tri_start_address !=0:
+                self.load_polygonal_faces(piece, tri_start_address, tri_list_size, tri_counter)
+            tri_counter+=vertex_in_piece
+
+    def load_vertex(self, piece, vertex_in_piece, vertex_start_address):
+        for i in range(vertex_in_piece):
+            pos = vertex_start_address + (self.data_size * i)
+            x,y,z = struct.unpack('<3h', piece[pos : pos + 6])
+            print(x,y,z)
+            vertex = Vertex(
+                x * 0.00001,
+                y * 0.00001 *-1,
+                z * 0.00001,
+            )
+            self.vertex_list.append(vertex)
+
+    def load_vertex_normal(self, piece, normals_in_piece, normals_start_address):
+        """
+        Load all vertex normals into a list
+        """
+        raise NotImplementedError()
+
+    def load_vextex_texture(self, piece, uv_in_piece, uv_start_address):
+        """
+        Load all vertex texture (uv map coordinates) into a list
+        """
+        for i in range(uv_in_piece):
+            pos = uv_start_address + (self.data_size * i)
+            u,v = struct.unpack('<2h', piece[pos : pos + 4])
+            self.vertex_texture_list.append(
+                VertexTexture(
+                    u * 0.000244,
+                    1 - v * 0.000244,
+                )
+            )
+
+    def load_polygonal_faces(self, piece, tri_start_address, tri_size, tri_counter):
+        """
+        Load all polygonal faces into a list
+        """
+        print(tri_size * 2)
+        print(tri_start_address)
+        tstrip_index_list = [x + tri_counter for x in struct.unpack(f'<{tri_size}H', piece[tri_start_address : tri_start_address + tri_size * 2])]
+        for k in range(len(tstrip_index_list)-2):
+            if (tstrip_index_list[k] != tstrip_index_list[k + 1]) and (tstrip_index_list[k + 1] != tstrip_index_list[k + 2]) and (tstrip_index_list[k + 2] != tstrip_index_list[k]):
+                if k & 1:
+                    self.polygonal_faces_list.append(
+                        PolygonalFace(
+                            tstrip_index_list[k + 1],
+                            tstrip_index_list[k],
+                            tstrip_index_list[k + 2]
+                        )
+                    )
+                else:
+                    self.polygonal_faces_list.append(
+                        PolygonalFace(
+                            tstrip_index_list[k],
+                            tstrip_index_list[k + 1],
+                            tstrip_index_list[k + 2]
+                        )
+                    )
+
+
+
+
 
 

@@ -2,8 +2,9 @@ from file_structure import FacePCModel, FacePS2Model, Container, unzlib_it, file
 from pathlib import Path
 
 from file_structure.image import PESImage, PNGImage
+from file_structure.models import FacePSPModel
 
-def create_obj(pes_model:FacePCModel, folder:str, filename:str):
+def create_obj(pes_model:FacePCModel, folder:str, filename:str, export_normals:bool):
     with open (f"{folder}/{filename}.obj","w") as obj_file:
         obj_file.writelines("# PES/WE/JL Model Tool\n")
         obj_file.writelines(f"# OBJ Model {filename}\n")
@@ -21,22 +22,31 @@ def create_obj(pes_model:FacePCModel, folder:str, filename:str):
         for x in range(len(pes_model.vertex_texture_list)):
             obj_file.write(f"vt  {pes_model.vertex_texture_list[x].u} {pes_model.vertex_texture_list[x].v}\n")
 
-        obj_file.writelines("\n")
-        obj_file.writelines(f"# Normals {len(pes_model.vertex_normal_list)}\n")
-        for i in range(len(pes_model.vertex_normal_list)):
-            obj_file.writelines(f"vn  {pes_model.vertex_normal_list[i].x} {pes_model.vertex_normal_list[i].y} {pes_model.vertex_normal_list[i].z}\n")
+        if export_normals:
+            obj_file.writelines("\n")
+            obj_file.writelines(f"# Normals {len(pes_model.vertex_normal_list)}\n")
+            for i in range(len(pes_model.vertex_normal_list)):
+                obj_file.writelines(f"vn  {pes_model.vertex_normal_list[i].x} {pes_model.vertex_normal_list[i].y} {pes_model.vertex_normal_list[i].z}\n")
 
         obj_file.writelines("\n")
         obj_file.writelines("usemtl material1\n")
         obj_file.writelines("\n")
         obj_file.writelines(f"# Faces {len(pes_model.polygonal_faces_list)}\n")
-        for i in range(len(pes_model.polygonal_faces_list)):
-            obj_file.write(f"f  "
-            + f"{pes_model.polygonal_faces_list[i].i1}/{pes_model.polygonal_faces_list[i].i1}/{pes_model.polygonal_faces_list[i].i1} "
-            + f"{pes_model.polygonal_faces_list[i].i2}/{pes_model.polygonal_faces_list[i].i2}/{pes_model.polygonal_faces_list[i].i2} "
-            + f"{pes_model.polygonal_faces_list[i].i3}/{pes_model.polygonal_faces_list[i].i3}/{pes_model.polygonal_faces_list[i].i3}\n"
-            )
-
+        if export_normals:
+            for i in range(len(pes_model.polygonal_faces_list)):
+                obj_file.write(f"f  "
+                + f"{pes_model.polygonal_faces_list[i].i1}/{pes_model.polygonal_faces_list[i].i1}/{pes_model.polygonal_faces_list[i].i1} "
+                + f"{pes_model.polygonal_faces_list[i].i2}/{pes_model.polygonal_faces_list[i].i2}/{pes_model.polygonal_faces_list[i].i2} "
+                + f"{pes_model.polygonal_faces_list[i].i3}/{pes_model.polygonal_faces_list[i].i3}/{pes_model.polygonal_faces_list[i].i3}\n"
+                )
+        else:
+            for i in range(len(pes_model.polygonal_faces_list)):
+                obj_file.write(f"f  "
+                + f"{pes_model.polygonal_faces_list[i].i1}/{pes_model.polygonal_faces_list[i].i1}"
+                + f"{pes_model.polygonal_faces_list[i].i2}/{pes_model.polygonal_faces_list[i].i2}"
+                + f"{pes_model.polygonal_faces_list[i].i3}/{pes_model.polygonal_faces_list[i].i3}\n"
+                )
+            
 def create_mtl(folder:str, filename:str):
     with open(f'{folder}/{filename}.mtl',"w") as mtl_file:
         mtl_file.writelines("newmtl material1 \n")
@@ -53,6 +63,8 @@ def get_face_hair_model(file_location:str, platform:int):
         model = FacePCModel(file_ctn.files[0])
     elif platform == 1:
         model = FacePS2Model(file_ctn.files[0])
+    else:
+        model = FacePSPModel(file_ctn.files[0])
     return model
 
 def is_hair(list_of_files:list):
@@ -66,13 +78,13 @@ def get_pes_texture(file_location:str):
     decompress_bin_file = unzlib_it(bin_file[32:])
     return get_container(decompress_bin_file).files[1] if is_hair(get_container(decompress_bin_file).files) else get_container(decompress_bin_file).files[-1]
 
-def bin_to_obj(file:str, platform:int):
+def bin_to_obj(file:str, platform:int, export_normals):
     # from a string we get a Path object and then we get the values that we need
     bin_location = Path(file)
     bin_full_path = str(bin_location.resolve())
     bin_filename = bin_location.stem
     bin_folder_location = str(bin_location.parent)
-    #"""
+    """
     if not Path(f"{bin_folder_location}/{bin_filename}.png").is_file():
         pes_image = PESImage()
         pes_image.from_bytes(get_pes_texture(bin_full_path))
@@ -86,11 +98,15 @@ def bin_to_obj(file:str, platform:int):
     model = get_face_hair_model(bin_full_path, platform)
 
     # actions to create a obj and mtl file
-    create_obj(model, bin_folder_location, bin_filename)
+    create_obj(model, bin_folder_location, bin_filename, export_normals)
     create_mtl(bin_folder_location, bin_filename)
 
 if __name__ == "__main__":
-    bin_to_obj("./test/Beckham-models/pc/face-unnamed_2009.bin", 0)
-    bin_to_obj("./test/Beckham-models/pc/hair-unnamed_5041.bin", 0)
-    bin_to_obj("./test/Beckham-models/ps2/face-unnamed_2009.bin", 1)
-    bin_to_obj("./test/Beckham-models/ps2/hair-unnamed_5041.bin", 1)
+    #bin_to_obj("./test/Beckham-models/pc/face-unnamed_2009.bin", 0)
+    #bin_to_obj("./test/Beckham-models/pc/hair-unnamed_5041.bin", 0)
+    #bin_to_obj("./test/Beckham-models/ps2/face-unnamed_2009.bin", 1, True)
+    #bin_to_obj("./test/Beckham-models/ps2/hair-unnamed_5041.bin", 1)
+    bin_to_obj("./test/Beckham-models/psp/face-unnamed_2142.bin", 2, False)
+    #bin_to_obj("./test/Beckham-models/psp/hair-unnamed_5174.bin", 2, False)
+
+
