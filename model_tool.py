@@ -42,8 +42,8 @@ def create_obj(pes_model:FacePCModel, folder:str, filename:str, export_normals:b
         else:
             for i in range(len(pes_model.polygonal_faces_list)):
                 obj_file.write(f"f  "
-                + f"{pes_model.polygonal_faces_list[i].i1}/{pes_model.polygonal_faces_list[i].i1}"
-                + f"{pes_model.polygonal_faces_list[i].i2}/{pes_model.polygonal_faces_list[i].i2}"
+                + f"{pes_model.polygonal_faces_list[i].i1}/{pes_model.polygonal_faces_list[i].i1} "
+                + f"{pes_model.polygonal_faces_list[i].i2}/{pes_model.polygonal_faces_list[i].i2} "
                 + f"{pes_model.polygonal_faces_list[i].i3}/{pes_model.polygonal_faces_list[i].i3}\n"
                 )
             
@@ -84,13 +84,12 @@ def bin_to_obj(file:str, platform:int, export_normals):
     bin_full_path = str(bin_location.resolve())
     bin_filename = bin_location.stem
     bin_folder_location = str(bin_location.parent)
-    """
-    if not Path(f"{bin_folder_location}/{bin_filename}.png").is_file():
+    #"""
+    if not Path(f"{bin_folder_location}/{bin_filename}.png").is_file() and platform != 2:
         pes_image = PESImage()
         pes_image.from_bytes(get_pes_texture(bin_full_path))
         pes_image.bgr_to_bgri()
         png_image = PNGImage()
-        #png_image.pes_img = pes_image
         png_image.png_from_pes_img(pes_image)
         with open(f"{bin_folder_location}/{bin_filename}.png", "wb") as png_file:
             png_file.write(png_image.png)
@@ -106,7 +105,8 @@ if __name__ == "__main__":
     #bin_to_obj("./test/Beckham-models/pc/hair-unnamed_5041.bin", 0, True)
     #bin_to_obj("./test/Beckham-models/ps2/face-unnamed_2009.bin", 1, True)
     #bin_to_obj("./test/Beckham-models/ps2/hair-unnamed_5041.bin", 1, True)
-    bin_to_obj("./test/Beckham-models/psp/face-unnamed_2142.bin", 2, False)
+    #bin_to_obj("./test/Beckham-models/psp/face-unnamed_2142.bin", 2, False)
     #bin_to_obj("./test/Beckham-models/psp/hair-unnamed_5174.bin", 2, False)
+    bin_to_obj("./test/ID01910.bin", 2, False)
 
 
