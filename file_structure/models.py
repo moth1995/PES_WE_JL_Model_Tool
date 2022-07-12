@@ -306,11 +306,11 @@ class FacePSPModel:
         for i, piece in enumerate(self.pieces):
             #print("part #", i)
             vertex_in_piece = to_int(piece[92:94])
-            vertex_start_address = to_int(piece[8:12])
+            vertex_start_address = to_int(piece[8:12])+8
             #print("vertex in this part: ",vertex_in_piece, " vertex start address: ", vertex_start_address)
-            normals_start_address = vertex_start_address + 6
+            #normals_start_address = vertex_start_address
             uv_start_address = normals_start_address + 4
-            tri_start_address = to_int(piece[12:16])
+            tri_start_address = to_int(piece[8:12])
             tri_list_size = to_int(piece[16:20])
             
             #print("tri start address: ", tri_start_address, " tri list size: ", tri_list_size)
@@ -333,9 +333,9 @@ class FacePSPModel:
             x,y,z = struct.unpack('<3h', piece[pos : pos + 6])
             #print(x,y,z)
             vertex = Vertex(
-                x * 0.00001,
-                y * 0.00001 *-1,
-                z * 0.00001,
+                x * 0.001953,
+                y * -0.001953,
+                z * 0.001953,
             )
             self.vertex_list.append(vertex)
 
@@ -351,7 +351,10 @@ class FacePSPModel:
         """
         for i in range(uv_in_piece):
             pos = uv_start_address + (self.data_size * i)
-            u,v = struct.unpack('<2h', piece[pos : pos + 4])
+            #u,v = struct.unpack('<2h', piece[pos : pos + 4])
+            u = int.from_bytes(piece[pos : pos + 2], byteorder='little', signed=True) + 32768
+            v = int.from_bytes(piece[pos + 2 : pos + 4], byteorder='little', signed=True) +32768
+            
             self.vertex_texture_list.append(
                 VertexTexture(
                     u * 0.000244,
