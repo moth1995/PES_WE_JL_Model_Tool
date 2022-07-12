@@ -306,10 +306,10 @@ class FacePSPModel:
         for i, piece in enumerate(self.pieces):
             #print("part #", i)
             vertex_in_piece = to_int(piece[92:94])
-            vertex_start_address = to_int(piece[8:12])
+            vertex_start_address = to_int(piece[8:12]) + 8
             #print("vertex in this part: ",vertex_in_piece, " vertex start address: ", vertex_start_address)
-            normals_start_address = vertex_start_address + 6
-            uv_start_address = normals_start_address + 4
+            normals_start_address =  to_int(piece[8:12])
+            uv_start_address = to_int(piece[8:12]) + 4
             tri_start_address = to_int(piece[12:16])
             tri_list_size = to_int(piece[16:20])
             
@@ -330,12 +330,12 @@ class FacePSPModel:
     def load_vertex(self, piece, vertex_in_piece, vertex_start_address):
         for i in range(vertex_in_piece):
             pos = vertex_start_address + (self.data_size * i)
-            x,y,z = struct.unpack('<3h', piece[pos : pos + 6])
+            z,y,x = struct.unpack('<3h', piece[pos : pos + 6])
             #print(x,y,z)
             vertex = Vertex(
-                x * 0.00001,
-                y * 0.00001 *-1,
-                z * 0.00001,
+                x * 0.001953,
+                (y * -0.001953),
+                z * 0.001953,
             )
             self.vertex_list.append(vertex)
 
@@ -354,8 +354,8 @@ class FacePSPModel:
             u,v = struct.unpack('<2h', piece[pos : pos + 4])
             self.vertex_texture_list.append(
                 VertexTexture(
-                    u * 0.000244,
-                    1 - v * 0.000244,
+                    u * -0.000244,
+                    v * -0.000244,
                 )
             )
 
@@ -369,6 +369,14 @@ class FacePSPModel:
         #print(tstrip_index_list)
         for k in range(len(tstrip_index_list)-2):
             if (tstrip_index_list[k] != tstrip_index_list[k + 1]) and (tstrip_index_list[k + 1] != tstrip_index_list[k + 2]) and (tstrip_index_list[k + 2] != tstrip_index_list[k]):
+                self.polygonal_faces_list.append(
+                    PolygonalFace(
+                        tstrip_index_list[k + 1],
+                        tstrip_index_list[k],
+                        tstrip_index_list[k + 2]
+                    )
+                )
+                """
                 if k & 1:
                     #print(tstrip_index_list[k + 1], tstrip_index_list[k], tstrip_index_list[k + 2])
                     self.polygonal_faces_list.append(
@@ -386,7 +394,7 @@ class FacePSPModel:
                             tstrip_index_list[k + 1],
                             tstrip_index_list[k + 2]
                         )
-                    )
+                    )"""
 
 
 
