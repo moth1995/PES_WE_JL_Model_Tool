@@ -105,7 +105,7 @@ if __name__ == "__main__":
     #bin_to_obj("./test/Beckham-models/pc/hair-unnamed_5041.bin", 0, True)
     #bin_to_obj("./test/Beckham-models/ps2/face-unnamed_2009.bin", 1, True)
     #bin_to_obj("./test/Beckham-models/ps2/hair-unnamed_5041.bin", 1, True)
-    #bin_to_obj("./test/Beckham-models/psp/face-unnamed_2142.bin", 2, False)
+    bin_to_obj("./test/Beckham-models/psp/face-unnamed_2142.bin", 2, False)
     #bin_to_obj("./test/Beckham-models/psp/hair-unnamed_5174.bin", 2, False)
     bin_to_obj("./test/ID01910.bin", 2, False)
 
