@@ -88,7 +88,7 @@ class FacePCModel:
                     ]) + 1
             tstrip_index_list.append(idx)
 
-        for i in range(0, self.poly_faces_count - 2, 1):
+        for i in range(self.poly_faces_count - 2):
             if (tstrip_index_list[i] != tstrip_index_list[i + 1]) and (tstrip_index_list[i + 1] != tstrip_index_list[i + 2]) and (tstrip_index_list[i + 2] != tstrip_index_list[i]):
                 if i & 1:
                     self.polygonal_faces_list.append(
@@ -106,6 +106,7 @@ class FacePCModel:
                             tstrip_index_list[i + 2]
                         )
                     )
+                i+=3
 
 class FacePS2Model:
     magic_number = bytearray([0x03,0x00,0xFF,0xFF])
@@ -259,6 +260,7 @@ class FacePS2Model:
                             tstrip_index_list[k + 2]
                         )
                     )
+                k+=3
 
 class FacePSPModel:
     magic_number = bytearray([0x03,0x00,0xFF,0xFF])
@@ -308,8 +310,8 @@ class FacePSPModel:
             vertex_in_piece = to_int(piece[92:94])
             vertex_start_address = to_int(piece[8:12]) + 8
             #print("vertex in this part: ",vertex_in_piece, " vertex start address: ", vertex_start_address)
-            normals_start_address =  to_int(piece[8:12])
-            uv_start_address = to_int(piece[8:12]) + 4
+            normals_start_address =  to_int(piece[8:12]) + 4
+            uv_start_address = to_int(piece[8:12])
             tri_start_address = to_int(piece[12:16])
             tri_list_size = to_int(piece[16:20])
             
@@ -334,7 +336,7 @@ class FacePSPModel:
             #print(x,y,z)
             vertex = Vertex(
                 x * 0.001953,
-                (y * -0.001953),
+                y * -0.001953 - 0.749928,
                 z * 0.001953,
             )
             self.vertex_list.append(vertex)
@@ -351,11 +353,11 @@ class FacePSPModel:
         """
         for i in range(uv_in_piece):
             pos = uv_start_address + (self.data_size * i)
-            u,v = struct.unpack('<2h', piece[pos : pos + 4])
+            u, v = struct.unpack('<2h', piece[pos : pos + 4])
             self.vertex_texture_list.append(
                 VertexTexture(
-                    u * -0.000244,
-                    v * -0.000244,
+                    (u + 32768) * 0.000244,
+                    1 - (v + 32768) * 0.000244,
                 )
             )
 
@@ -363,22 +365,10 @@ class FacePSPModel:
         """
         Load all polygonal faces into a list
         """
-        #print(tri_size * 2)
-        #print(tri_start_address)
         tstrip_index_list = [x + tri_counter for x in struct.unpack(f'<{tri_size}H', piece[tri_start_address : tri_start_address + tri_size * 2])]
-        #print(tstrip_index_list)
         for k in range(len(tstrip_index_list)-2):
-            if (tstrip_index_list[k] != tstrip_index_list[k + 1]) and (tstrip_index_list[k + 1] != tstrip_index_list[k + 2]) and (tstrip_index_list[k + 2] != tstrip_index_list[k]):
-                self.polygonal_faces_list.append(
-                    PolygonalFace(
-                        tstrip_index_list[k + 1],
-                        tstrip_index_list[k],
-                        tstrip_index_list[k + 2]
-                    )
-                )
-                """
+            if (tstrip_index_list[k] != tstrip_index_list[k + 1]) and (tstrip_index_list[k + 2] != tstrip_index_list[k]):
                 if k & 1:
-                    #print(tstrip_index_list[k + 1], tstrip_index_list[k], tstrip_index_list[k + 2])
                     self.polygonal_faces_list.append(
                         PolygonalFace(
                             tstrip_index_list[k + 1],
@@ -387,14 +377,14 @@ class FacePSPModel:
                         )
                     )
                 else:
-                    #print(tstrip_index_list[k], tstrip_index_list[k + 1], tstrip_index_list[k + 2])
                     self.polygonal_faces_list.append(
                         PolygonalFace(
                             tstrip_index_list[k],
                             tstrip_index_list[k + 1],
                             tstrip_index_list[k + 2]
                         )
-                    )"""
+                    )
+                k+=3
 
 
 
